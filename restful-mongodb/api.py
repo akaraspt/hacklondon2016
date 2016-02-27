@@ -64,7 +64,7 @@ class AddUserInfoResource(Resource):
         # fb_id = request.form.get('facebook_id')
         # name = request.form.get('name')
         fb_id = request.json.get('facebook_id')
-        name = request.json.get('facebook_id')
+        name = request.json.get('name')
 
         if not fb_id or not name:
             return {'message': 'Please specify facebook_id and name.'}
@@ -76,7 +76,7 @@ class AddUserInfoResource(Resource):
         user.save()
 
         # Return user information
-        return {'facebook_id': user.facebook_id, 'name': user.name}
+        return {'facebook_id': user./, 'name': user.name}
 
 
 class UploadUserImgResource(Resource):
