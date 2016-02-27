@@ -1,11 +1,9 @@
 import os
 
-from flask import (Flask, request)
+from flask import (Flask, request, send_file)
 from flask_restful import Resource, Api
 from flask_mongoengine import MongoEngine
 from werkzeug.utils import secure_filename
-
-import requests
 
 from users import (User, UserImage)
 
@@ -14,7 +12,7 @@ MONGODB_DB = 'hacklondondb'
 MONGODB_HOST = '127.0.0.1'
 MONGODB_PORT = 27017
 ALLOWED_EXTENSIONS = set(['jpg', 'png', 'jpeg'])
-UPLOAD_FOLDER = 'tmp'
+TMP_FOLDER = 'tmp'
 
 # Create the application
 app = Flask(__name__)
@@ -46,52 +44,50 @@ def allowed_file(filename):
 
 class GetUserResource(Resource):
 
-    def get(self, user_id):
+    def get(self, fb_id):
         # Query for a user
-        users = User.objects(user_id=user_id)
+        users = User.objects(facebook_id=fb_id)
 
-        list_users = ''
-        for u_idx, u in enumerate(users):
-            if u_idx == len(users) - 1:
-                list_users += u.facebook_id
-            else:
-                list_users += u.facebook_id + ', '
+        if len(users) > 1:
+            raise Exception('Multiple user id detected.')
+        elif len(users) == 1:
+            user = users[0]
+            return {'status': 'success', 'facebook_id': user.facebook_id}
 
-        # Return user information
-        return 'Found {}: {}'.format(len(users), list_users)
+        return {'status': 'fail'}
 
 
 class AddUserInfoResource(Resource):
 
     def post(self):
         # Get user information from POST request
-        fname = request.form.get('first_name')
-        lname = request.form.get('last_name')
         fb_id = request.form.get('facebook_id')
+        name = request.form.get('name')
 
         # Create a User object
         user = User()
-        user.first_name = fname
-        user.last_name = lname
         user.facebook_id = fb_id
+        user.name = name
         user.save()
 
         # Return user information
-        return {str(user.user_id): fname + ' ' + lname + ' (' + fb_id + ')'}
+        return {'facebook_id': user.facebook_id, 'name': user.name}
 
 
 class UploadUserImgResource(Resource):
 
-    def post(self, user_id):
+    def post(self, fb_id):
         # Query for the patient
-        users = User.objects(user_id=user_id)
+        users = User.objects(facebook_id=fb_id)
 
         if len(users) > 1:
             raise Exception('Multiple user id detected.')
 
+        user = users[0]
+
         # Create an instance for session
         user_img = UserImage()
-        user_img.user_ref = users[0]
+        user_img.facebook_id = user.facebook_id
 
         # Get upload file
         file = request.files.get('file')
@@ -102,7 +98,7 @@ class UploadUserImgResource(Resource):
             # Check for allowed extension
             if allowed_file(file.filename):
                 # Save file to disk
-                upload_file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                upload_file_path = os.path.join(app.config['TMP_FOLDER'], filename)
                 file.save(upload_file_path)
 
                 # If there is upload file
@@ -117,33 +113,75 @@ class UploadUserImgResource(Resource):
                         # Remove uploaded file from the upload directory, as it has already been stored in database
                         os.remove(upload_file_path)
 
-                        return {'Status': 'Success'}
+                        return {'status': 'success', 'user_img_id': str(user_img.user_img_id)}
 
-        return {'Status': 'Fail'}
+        return {'status': 'fail'}
 
 
 class ViewUserImgResource(Resource):
 
-    def get(self, user_id):
-        user_img = UserImage.objects(user_ref=user_id)
+    def get(self, fb_id):
+        user_img = UserImage.objects(facebook_id=fb_id)
 
+        imgs = []
         for img in user_img:
-            # Read the data file
-            img_file = img.data_file.read()
+            imgs.append(str(img.user_img_id))
 
-            # Save into a temporarily csv file onto the server, then send to the client
-            filename = str(img.user_img_id) + '.jpg'
-            with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'wb') as file:
-                file.write(img_file)
-
-        return {'Status': 'Success'}
+        return imgs
 
 
-api.add_resource(GetUserResource, '/user/<string:user_id>')
+class DownloadUserImgResource(Resource):
+
+    def get(self, fb_id, user_img_id):
+
+        user_img = UserImage.objects(facebook_id=fb_id, user_img_id=user_img_id)
+
+        if len(user_img) > 1:
+            raise Exception('Multiple image id detected.')
+
+        img = user_img[0]
+
+        # Read the data file
+        img_file = img.data_file.read()
+
+        # Save into a temporarily csv file onto the server, then send to the client
+        filename = img.facebook_id + '_' + str(img.user_img_id) + '.jpg'
+        filepath = os.path.join(app.config['TMP_FOLDER'], filename)
+        with open(filepath, 'wb') as file:
+            file.write(img_file)
+
+        return send_file(filepath)
+
+
+class GetUserFriendResource(Resource):
+
+    def get(self, fb_id):
+
+        users = User.objects(facebook_id=fb_id)
+
+        if len(users) > 1:
+            raise Exception('Multiple user id detected.')
+
+        user = users[0]
+
+        list_friend = []
+        for f in user.friends:
+            list_friend.append(f.facebook_id)
+
+        return list_friend
+
+# User
+api.add_resource(GetUserResource, '/user/<string:fb_id>')
 api.add_resource(AddUserInfoResource, '/user/add')
-api.add_resource(UploadUserImgResource, '/user/img/upload/<string:user_id>')
-api.add_resource(ViewUserImgResource, '/user/img/<string:user_id>')
+
+# User images
+api.add_resource(UploadUserImgResource, '/user/img/upload/<string:fb_id>')
+api.add_resource(ViewUserImgResource, '/user/img/<string:fb_id>')
+api.add_resource(DownloadUserImgResource, '/user/img/<string:fb_id>/<string:user_img_id>')
+
+# User friends
+api.add_resource(GetUserFriendResource, '/user/friend/<string:fb_id>')
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
