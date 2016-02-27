@@ -9,7 +9,7 @@ from users import (User, UserImage)
 
 
 MONGODB_DB = 'hacklondondb'
-MONGODB_HOST = '127.0.0.1'
+MONGODB_HOST = '104.46.48.140'
 MONGODB_PORT = 27017
 ALLOWED_EXTENSIONS = set(['jpg', 'png', 'jpeg'])
 TMP_FOLDER = 'tmp'
