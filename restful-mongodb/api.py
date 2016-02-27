@@ -54,15 +54,20 @@ class GetUserResource(Resource):
             user = users[0]
             return {'status': 'success', 'facebook_id': user.facebook_id}
 
-        return {'status': 'fail'}
+        return {'message': 'Invalid facebook id.'}
 
 
 class AddUserInfoResource(Resource):
 
     def post(self):
         # Get user information from POST request
-        fb_id = request.form.get('facebook_id')
-        name = request.form.get('name')
+        # fb_id = request.form.get('facebook_id')
+        # name = request.form.get('name')
+        fb_id = request.json.get('facebook_id')
+        name = request.json.get('facebook_id')
+
+        if not fb_id or not name:
+            return {'message': 'Please specify facebook_id and name.'}
 
         # Create a User object
         user = User()
@@ -82,6 +87,8 @@ class UploadUserImgResource(Resource):
 
         if len(users) > 1:
             raise Exception('Multiple user id detected.')
+        elif len(users) == 0:
+            return {'message': 'Invalid facebook id.'}
 
         user = users[0]
 
