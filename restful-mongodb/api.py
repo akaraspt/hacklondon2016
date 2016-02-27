@@ -76,7 +76,7 @@ class AddUserInfoResource(Resource):
         user.save()
 
         # Return user information
-        return {'facebook_id': user./, 'name': user.name}
+        return {'facebook_id': user.facebook_id, 'name': user.name}
 
 
 class UploadUserImgResource(Resource):
