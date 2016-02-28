@@ -82,8 +82,6 @@ class AddUserInfoResource(Resource):
         if not fb_id or not name:
             return {'status': 'fail', 'message': 'Please specify facebook id and name.'}
 
-        print request.json
-
         # Create a User object
         user = User()
         user.facebook_id = fb_id
@@ -400,7 +398,7 @@ class DetectUserResource(Resource):
                         if len(users) > 1:
                             raise {'status': 'fail', 'message': 'Multiple person id detected.'}
                         elif len(users) == 0:
-                            return {'status': 'fail', 'message': 'Invalid person id.'}
+                            return {'status': 'fail', 'message': 'Invalid person id ({}).'.format(pid)}
 
                         user = users[0]
                         list_facebook_id.append(user.facebook_id)
