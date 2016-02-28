@@ -5,7 +5,7 @@ from flask_restful import Resource, Api
 from flask_mongoengine import MongoEngine
 from werkzeug.utils import secure_filename
 
-from users import (User, UserImage)
+from users import (User, UserImage, Friend)
 
 
 MONGODB_DB = 'hacklondondb'
@@ -52,7 +52,13 @@ class GetUserResource(Resource):
             raise Exception('Multiple facebook id detected.')
         elif len(users) == 1:
             user = users[0]
-            return {'status': 'success', 'facebook_id': user.facebook_id}
+            list_friends = []
+            for f in user.friends:
+                list_friends.append({
+                    'facebook_id': f.facebook_id,
+                    'name': f.name
+                })
+            return {'status': 'success', 'friends': list_friends}
 
         return {'status': 'fail', 'message': 'Invalid facebook id.'}
 
@@ -65,6 +71,7 @@ class AddUserInfoResource(Resource):
         # name = request.form.get('name')
         fb_id = request.json.get('facebook_id')
         name = request.json.get('name')
+        friends = request.json.get('friends')
 
         if not fb_id or not name:
             return {'status': 'fail', 'message': 'Please specify facebook id and name.'}
@@ -73,6 +80,13 @@ class AddUserInfoResource(Resource):
         user = User()
         user.facebook_id = fb_id
         user.name = name
+
+        for f in friends:
+            friend = Friend()
+            friend.facebook_id = f.get('facebook_id')
+            friend.name = f.get('name')
+            user.friends.append(friend)
+
         user.save()
 
         # Return user information

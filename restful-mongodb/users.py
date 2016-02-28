@@ -4,11 +4,16 @@ import mongoengine as db
 from bson import ObjectId
 
 
+class Friend(db.Document):
+    facebook_id = db.StringField(name='facebook_id', max_length=255, required=True, unique=True, primary_key=True)
+    name = db.StringField(max_length=255, required=True)
+
+
 class User(db.Document):
     # user_id = db.ObjectIdField(default=ObjectId, required=True, unique=True, primary_key=True)
     facebook_id = db.StringField(name='facebook_id', max_length=255, required=True, unique=True, primary_key=True)
     name = db.StringField(max_length=255, required=True)
-    friends = db.ListField(db.EmbeddedDocumentField('User'))
+    friends = db.ListField(db.EmbeddedDocumentField('Friend'))
     created_at = db.DateTimeField(default=datetime.datetime.now, required=True)
 
     meta = {
