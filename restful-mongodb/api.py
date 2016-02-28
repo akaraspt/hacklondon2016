@@ -121,23 +121,6 @@ class UploadUserImgResource(Resource):
 
     def post(self, fb_id):
 
-        # Check training status
-        response = requests.get(
-            'https://api.projectoxford.ai/face/v1.0/persongroups/{}/training'.format(
-                persongroups_id
-            ),
-            headers={
-                'Ocp-Apim-Subscription-Key': sub_key
-            }
-        )
-        response_json = response.json()
-        if response_json.get('error'):
-            return {'status': 'fail', 'message': response_json.get('error')}
-        if response_json.get('status') != 'succeeded':
-            return {'status': 'fail', 'message': 'The system is busy. Please try again.'}
-
-        # ====================================================================================
-
         # Query for the patient
         users = User.objects(facebook_id=fb_id)
 
