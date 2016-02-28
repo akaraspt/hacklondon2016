@@ -436,15 +436,22 @@ class DetectUserResource(Resource):
                         user = users[0]
                         list_facebook_id.append(user.facebook_id)
 
-                        output = {
-                            'location': dict_face_id[dict_person_id[pid]],
-                            'friend_of': 'none'
-                        }
-
-                        for key, value in dict_fof.iteritems():
-                            if user.facebook_id in value:
-                                output['friend_of'] = key
+                        friend_of = None
+                        for fff in list_friend:
+                            if user.facebook_id in dict_fof[fff]:
+                                friend_of = fff
                                 break
+
+                        if friend_of:
+                            output = {
+                                'location': dict_face_id[dict_person_id[pid]],
+                                'friend_of': friend_of
+                            }
+                        else:
+                            output = {
+                                'location': dict_face_id[dict_person_id[pid]],
+                                'friend_of': 'none'
+                            }
 
                         dict_facebook_id[user.facebook_id] = output
 
