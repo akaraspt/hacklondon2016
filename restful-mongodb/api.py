@@ -49,12 +49,12 @@ class GetUserResource(Resource):
         users = User.objects(facebook_id=fb_id)
 
         if len(users) > 1:
-            raise Exception('Multiple user id detected.')
+            raise Exception('Multiple facebook id detected.')
         elif len(users) == 1:
             user = users[0]
             return {'status': 'success', 'facebook_id': user.facebook_id}
 
-        return {'message': 'Invalid facebook id.'}
+        return {'status': 'fail', 'message': 'Invalid facebook id.'}
 
 
 class AddUserInfoResource(Resource):
@@ -67,7 +67,7 @@ class AddUserInfoResource(Resource):
         name = request.json.get('name')
 
         if not fb_id or not name:
-            return {'message': 'Please specify facebook_id and name.'}
+            return {'status': 'fail', 'message': 'Please specify facebook id and name.'}
 
         # Create a User object
         user = User()
@@ -76,7 +76,7 @@ class AddUserInfoResource(Resource):
         user.save()
 
         # Return user information
-        return {'facebook_id': user.facebook_id, 'name': user.name}
+        return {'status': 'success'}
 
 
 class UploadUserImgResource(Resource):
@@ -86,9 +86,9 @@ class UploadUserImgResource(Resource):
         users = User.objects(facebook_id=fb_id)
 
         if len(users) > 1:
-            raise Exception('Multiple user id detected.')
+            raise {'status': 'fail', 'message': 'Multiple user id detected.'}
         elif len(users) == 0:
-            return {'message': 'Invalid facebook id.'}
+            return {'status': 'fail', 'message': 'Invalid facebook id.'}
 
         user = users[0]
 
@@ -121,8 +121,14 @@ class UploadUserImgResource(Resource):
                         os.remove(upload_file_path)
 
                         return {'status': 'success', 'user_img_id': str(user_img.user_img_id)}
+                else:
+                    return {'status': 'fail', 'message': 'Fail to save the sent file.'}
+            else:
+                return {'status': 'fail', 'message': 'Invalid file format.'}
+        else:
+            return {'status': 'fail', 'message': 'File not found. Please send a file using \'file\' as a name.'}
 
-        return {'status': 'fail'}
+
 
 
 class ViewUserImgResource(Resource):
@@ -134,7 +140,7 @@ class ViewUserImgResource(Resource):
         for img in user_img:
             imgs.append(str(img.user_img_id))
 
-        return imgs
+        return {'status': 'success', 'imgs': imgs}
 
 
 class DownloadUserImgResource(Resource):
@@ -145,6 +151,11 @@ class DownloadUserImgResource(Resource):
 
         if len(user_img) > 1:
             raise Exception('Multiple image id detected.')
+
+        if len(user_img) > 1:
+            raise {'status': 'fail', 'message': 'Multiple image id detected.'}
+        elif len(user_img) == 0:
+            return {'status': 'fail', 'message': 'Invalid facebook id and/or image id.'}
 
         img = user_img[0]
 
@@ -167,7 +178,9 @@ class GetUserFriendResource(Resource):
         users = User.objects(facebook_id=fb_id)
 
         if len(users) > 1:
-            raise Exception('Multiple user id detected.')
+            raise {'status': 'fail', 'message': 'Multiple facebook id detected.'}
+        elif len(users) == 0:
+            return {'status': 'fail', 'message': 'Invalid facebook id.'}
 
         user = users[0]
 
@@ -175,7 +188,7 @@ class GetUserFriendResource(Resource):
         for f in user.friends:
             list_friend.append(f.facebook_id)
 
-        return list_friend
+        return {'status': 'success', 'friends': list_friend}
 
 # User
 api.add_resource(GetUserResource, '/user/<string:fb_id>')
