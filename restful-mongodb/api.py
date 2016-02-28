@@ -3,6 +3,7 @@ import os
 import requests
 
 from flask import (Flask, request, send_file)
+from flask.ext.script import Manager, Server
 from flask_restful import Resource, Api
 from flask_mongoengine import MongoEngine
 from werkzeug.utils import secure_filename
@@ -23,6 +24,15 @@ api = Api(app)
 
 # Initialize the MongoDB driver
 db = MongoEngine(app)
+
+manager = Manager(app)
+
+# Turn on debugger by default and reloader
+manager.add_command("runserver", Server(
+    use_debugger = True,
+    use_reloader = True,
+    host = '0.0.0.0')
+)
 
 # Face API
 persongroups_id = 'who_is_that_guy'
@@ -417,4 +427,5 @@ api.add_resource(GetUserFriendResource, '/user/friend/<string:fb_id>')
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # app.run(host='0.0.0.0', port=5000, debug=True)
+    manager.run()
