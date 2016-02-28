@@ -15,7 +15,8 @@ MONGODB_DB = 'hacklondondb'
 MONGODB_HOST = '104.46.48.140'
 MONGODB_PORT = 27017
 ALLOWED_EXTENSIONS = set(['jpg', 'png', 'jpeg'])
-TMP_FOLDER = '/Users/akara/Workspace/hacklondon2016/restful-mongodb/tmp'
+# TMP_FOLDER = '/Users/akara/Workspace/hacklondon2016/restful-mongodb/tmp'
+TMP_FOLDER = '/home/admin1234/hacklondon2016/restful-mongodb/tmp'
 
 # Create the application
 app = Flask(__name__)
@@ -288,7 +289,7 @@ class GetUserFriendResource(Resource):
 
 class DetectUserResource(Resource):
 
-    def post(self):
+    def post(self, fb_id):
 
         # Check training status
         response = requests.get(
@@ -304,6 +305,45 @@ class DetectUserResource(Resource):
             return {'status': 'fail', 'message': response_json.get('error')}
         if response_json.get('status') != 'succeeded':
             return {'status': 'fail', 'message': 'The system is busy. Please try again.'}
+
+        # ====================================================================================
+
+        # Get a list of friends
+        users = User.objects(facebook_id=fb_id)
+
+        if len(users) > 1:
+            raise {'status': 'fail', 'message': 'Multiple facebook id detected.'}
+        elif len(users) == 0:
+            return {'status': 'fail', 'message': 'Invalid facebook id.'}
+
+        user = users[0]
+
+        list_friend = []
+        for f in user.friends:
+            list_friend.append(f.facebook_id)
+
+        # ====================================================================================
+
+        # Get a list of friends of friends
+        dict_fof = {}
+        for f_fb_id in list_friend:
+
+            # Get a list of friends
+            users = User.objects(facebook_id=f_fb_id)
+
+            if len(users) > 1:
+                raise {'status': 'fail', 'message': 'Multiple facebook id detected.'}
+            elif len(users) == 0:
+                return {'status': 'fail', 'message': 'Invalid facebook id.'}
+
+            user = users[0]
+
+            f_list_friend = []
+            for ff in user.friends:
+                if ff.facebook_id != fb_id:
+                    f_list_friend.append(ff.facebook_id)
+
+            dict_fof[f_fb_id] = f_list_friend
 
         # ====================================================================================
 
@@ -395,7 +435,18 @@ class DetectUserResource(Resource):
 
                         user = users[0]
                         list_facebook_id.append(user.facebook_id)
-                        dict_facebook_id[user.facebook_id] = dict_face_id[dict_person_id[pid]]
+
+                        output = {
+                            'location': dict_face_id[dict_person_id[pid]],
+                            'friend_of': 'none'
+                        }
+
+                        for key, value in dict_fof.iteritems():
+                            if user.facebook_id in value:
+                                output['friend_of'] = key
+                                break
+
+                        dict_facebook_id[user.facebook_id] = output
 
                     return {'status': 'success',
                             'face_id': list_face_id,
@@ -420,7 +471,7 @@ api.add_resource(ViewUserImgResource, '/user/img/<string:fb_id>')
 api.add_resource(DownloadUserImgResource, '/user/img/<string:fb_id>/<string:user_img_id>')
 
 # Detect images
-api.add_resource(DetectUserResource, '/user/detect')
+api.add_resource(DetectUserResource, '/user/detect/<string:fb_id>')
 
 # User friends
 api.add_resource(GetUserFriendResource, '/user/friend/<string:fb_id>')
