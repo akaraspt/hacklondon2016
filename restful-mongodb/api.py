@@ -82,6 +82,8 @@ class AddUserInfoResource(Resource):
         if not fb_id or not name:
             return {'status': 'fail', 'message': 'Please specify facebook id and name.'}
 
+        print request.json
+
         # Create a User object
         user = User()
         user.facebook_id = fb_id
@@ -120,6 +122,24 @@ class AddUserInfoResource(Resource):
 class UploadUserImgResource(Resource):
 
     def post(self, fb_id):
+
+        # Check training status
+        response = requests.get(
+            'https://api.projectoxford.ai/face/v1.0/persongroups/{}/training'.format(
+                persongroups_id
+            ),
+            headers={
+                'Ocp-Apim-Subscription-Key': sub_key
+            }
+        )
+        response_json = response.json()
+        if response_json.get('error'):
+            return {'status': 'fail', 'message': response_json.get('error')}
+        if response_json.get('status') != 'succeeded':
+            return {'status': 'fail', 'message': 'The system is busy. Please try again.'}
+
+        # ====================================================================================
+
         # Query for the patient
         users = User.objects(facebook_id=fb_id)
 
@@ -331,8 +351,10 @@ class DetectUserResource(Resource):
 
                     # Get return face_id, which are used to refer to the detected faces
                     list_face_id = []
+                    dict_face_id = {}
                     for r in response_json:
                         list_face_id.append(r.get('faceId'))
+                        dict_face_id[r.get('faceId')] = r.get('faceRectangle')
 
                     if len(list_face_id) == 0:
                         return {'status': 'fail', 'message': 'No face detected.'}
@@ -358,9 +380,11 @@ class DetectUserResource(Resource):
                             return {'status': 'fail', 'message': response_json.get('error')}
 
                     list_person_id = []
+                    dict_person_id = {}
                     for r in response_json:
                         for c in r.get('candidates'):
                             list_person_id.append(c.get('personId'))
+                            dict_person_id[c.get('personId')] = r.get('faceId')
 
                     if len(list_person_id) == 0:
                         return {'status': 'fail', 'message': 'No user detected.'}
@@ -369,6 +393,7 @@ class DetectUserResource(Resource):
 
                     # Get facebook id
                     list_facebook_id = []
+                    dict_facebook_id = {}
                     for pid in list_person_id:
                         users = User.objects(person_id=pid)
 
@@ -379,11 +404,13 @@ class DetectUserResource(Resource):
 
                         user = users[0]
                         list_facebook_id.append(user.facebook_id)
+                        dict_facebook_id[user.facebook_id] = dict_face_id[dict_person_id[pid]]
 
                     return {'status': 'success',
                             'face_id': list_face_id,
                             'person_id': list_person_id,
-                            'facebook_id': list_facebook_id}
+                            'facebook_id': list_facebook_id,
+                            'dict': dict_facebook_id}
                 else:
                     return {'status': 'fail', 'message': 'Fail to save the sent file.'}
             else:

@@ -5,7 +5,7 @@ from bson import ObjectId
 
 
 class Friend(db.Document):
-    facebook_id = db.StringField(name='facebook_id', max_length=255, required=True, unique=True, primary_key=True)
+    facebook_id = db.StringField(name='facebook_id', max_length=255, required=True)
     name = db.StringField(max_length=255, required=True)
 
 
